@@ -1,8 +1,11 @@
-import urllib.request
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+from sklearn.tree import DecisionTreeClassifier
 
 df = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/breast-cancer.data",
                  header=None)
@@ -76,4 +79,49 @@ df["breast_quad"].value_counts()
 hot = pd.get_dummies(df["breast_quad"], prefix="breast_quad")
 df = df.join(hot)
 
+# split data set
+x = df[["age", "tumor_size", "inv_nodes", "node_caps", "deg_malig", "menopause_ge40", "menopause_lt40",
+        "menopause_premeno", "breast_quad_central", "breast_quad_left_low", "breast_quad_left_up",
+        "breast_quad_right_low", "breast_quad_right_up", "irradiat"]]
+y = df["class"]
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5, random_state=8)
 
+# create data frame to save results
+results = pd.DataFrame({"model": object(), "accuracy": float()}, index=[])
+
+# knn
+k = 10
+accuracy = np.zeros(k-1)
+for n in range(1, k):
+    neigh = KNeighborsClassifier(n_neighbors=n)
+    neigh.fit(x_train, y_train)
+    yhat_neigh = neigh.predict(x_test)
+    accuracy[n-1] = metrics.accuracy_score(y_test, yhat_neigh)
+
+plt.plot(range(1, k), accuracy, '-o', label="knn")
+# we see that k=5 produces the highest accuracy
+neigh = KNeighborsClassifier(n_neighbors=accuracy.argmax()+1)
+neigh.fit(x_train, y_train)
+yhat_neigh = neigh.predict(x_test)
+results = results.append({"model": "knn", "accuracy": metrics.accuracy_score(y_test, yhat_neigh)}, ignore_index=True)
+
+# decision tree
+d = 10
+accuracy = np.zeros(d-1)
+for depth in range(1, d):
+    tree = DecisionTreeClassifier(criterion="entropy", max_depth=depth)
+    tree.fit(x_train, y_train)
+    yhat_tree = tree.predict(x_test)
+    accuracy[depth-1] = metrics.accuracy_score(y_test, yhat_tree)
+
+plt.plot(range(1, d), accuracy, '-o', label="tree")
+# 3 seems to be the number
+tree = DecisionTreeClassifier(criterion="entropy", max_depth=accuracy.argmax()+1)
+tree.fit(x_train, y_train)
+yhat_tree = tree.predict(x_test)
+results = results.append({"model": "tree", "accuracy": metrics.accuracy_score(y_test, yhat_tree)}, ignore_index=True)
+
+# logistic
+
+
+plt.legend()
