@@ -9,6 +9,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 
 df = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/breast-cancer.data",
                  header=None)
@@ -92,64 +93,108 @@ x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5, random_
 # create data frame to save results
 results = pd.DataFrame({"model": object(), "accuracy": float(), "f1": float()}, index=[])
 
-# knn
-k = 10
-accuracy = np.zeros(k-1)
-f1 = np.zeros(k-1)
-for n in range(1, k):
-    neigh = KNeighborsClassifier(n_neighbors=n)
-    neigh.fit(x_train, y_train)
-    yhat_neigh = neigh.predict(x_test)
-    # do not include the neighbors = 1 because it would result in over fitting
-    if n != 1:
-        accuracy[n-1] = metrics.accuracy_score(y_test, yhat_neigh)
-        f1[n-1] = metrics.f1_score(y_test, yhat_neigh)
-
-plt.figure()
-plt.plot(range(1, k), accuracy, '-o', label="accuracy")
-plt.plot(range(1, k), f1, '-0', label="f1")
-plt.title("KNN")
-plt.legend()
-neigh = KNeighborsClassifier(n_neighbors=f1.argmax()+1)
+#knn
+#define the parameters
+leaf_size = list(range(1, 10))
+n_neighbors = list(range(1, 10))
+p = [1,2]
+parameters = dict(leaf_size=leaf_size, n_neighbors=n_neighbors, p=p)
+neigh = KNeighborsClassifier()
+#define the grid search
+neigh_grid = GridSearchCV(neigh, parameters, cv=10, scoring="f1")
+# find the best fit model
+neigh_best = neigh_grid.fit(x_train, y_train)
+# get the parameters of the best fit model
+parameters_best = neigh_best.best_estimator_.get_params()
+# fit the best fit model
+neigh = KNeighborsClassifier(n_neighbors=parameters_best["n_neighbors"],
+                             leaf_size=parameters_best["leaf_size"],
+                             p=parameters_best["p"])
 neigh.fit(x_train, y_train)
+# get the predicted values
 yhat_neigh = neigh.predict(x_test)
 results = results.append({"model": "knn", "accuracy": metrics.accuracy_score(y_test, yhat_neigh), "f1": metrics.f1_score(y_test, yhat_neigh)}, ignore_index=True)
 
 # decision tree
-d = 10
-accuracy = np.zeros(d-1)
-f1 = np.zeros(d-1)
-for depth in range(1, d):
-    tree = DecisionTreeClassifier(criterion="entropy", max_depth=depth)
-    tree.fit(x_train, y_train)
-    yhat_tree = tree.predict(x_test)
-    accuracy[depth-1] = metrics.accuracy_score(y_test, yhat_tree)
-    f1[n - 1] = metrics.f1_score(y_test, yhat_tree)
-
-plt.figure()
-plt.plot(range(1, d), accuracy, '-o', label="accuracy")
-plt.plot(range(1, d), f1, '-o', label="f1")
-plt.title("Decision tree")
-plt.legend()
-# Take the model with the highest f1 score
-tree = DecisionTreeClassifier(criterion="entropy", max_depth=f1.argmax()+1)
+# define the parameters
+max_depth = list(range(1, 10))
+min_samples_split = list(range(1, 10))
+min_samples_leaf = list(range(1, 5))
+parameters = dict(max_depth=max_depth, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf)
+tree = DecisionTreeClassifier()
+# define the grid search
+tree_grid = GridSearchCV(tree, parameters, cv=10, scoring="f1")
+# find the best fit model
+tree_best = tree_grid.fit(x_train, y_train)
+# get the parameters of the best fit model
+parameters_best = tree_best.best_estimator_.get_params()
+# fit the best model
+tree = DecisionTreeClassifier(max_depth=parameters_best["max_depth"],
+                              min_samples_split=parameters_best["min_samples_split"],
+                              min_samples_leaf=parameters_best["min_samples_leaf"])
 tree.fit(x_train, y_train)
 yhat_tree = tree.predict(x_test)
 results = results.append({"model": "tree", "accuracy": metrics.accuracy_score(y_test, yhat_tree), "f1": metrics.f1_score(y_test, yhat_tree)}, ignore_index=True)
 
 # logistic
-LR = LogisticRegression()
-LR.fit(x_train, y_train)
-yhat_logistic = LR.predict(x_test)
-results = results.append({"model": "logistic", "accuracy": metrics.accuracy_score(y_test, yhat_logistic), "f1": metrics.f1_score(y_test, yhat_logistic)}, ignore_index=True)
+# define parameters
+c = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+parameters = dict(C=c)
+lr = LogisticRegression(max_iter=500)
+# define the grid search
+log_grid = GridSearchCV(lr, parameters, cv=10, scoring="f1")
+# get the best fit model
+log_best = log_grid.fit(x_train, y_train)
+# get the parameters of the best fit model
+parameters_best = log_best.best_estimator_.get_params()
+# fit the best model
+lr = LogisticRegression(C=parameters_best["C"], max_iter=500)
+lr.fit(x_train, y_train)
+yhat_log = lr.predict(x_test)
+results = results.append({"model": "logistic", "accuracy": metrics.accuracy_score(y_test, yhat_log), "f1": metrics.f1_score(y_test, yhat_log)}, ignore_index=True)
 
 #SVM
-SV = svm.SVC()
-SV.fit(x_train, y_train)
-yhat_svm = SV.predict(x_test)
-metrics.accuracy_score(y_test, yhat_svm)
+# define the parameters
+kernel = ['poly', 'rbf', 'sigmoid', 'linear']
+c = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+parameters = dict(kernel=kernel, C=c)
+sv =svm.SVC()
+# define the grid search
+sv_grid = GridSearchCV(sv, parameters, cv=10, scoring="f1")
+# get the best fit model
+sv_best = sv_grid.fit(x_train, y_train)
+# get the parameters of the best fit model
+parameters_best = sv_best.best_estimator_.get_params()
+# fit the best model
+sv = svm.SVC(C=parameters_best["C"], kernel=parameters_best["kernel"])
+sv.fit(x_train, y_train)
+yhat_svm = sv.predict(x_test)
+results = results.append({"model": "SVM", "accuracy": metrics.accuracy_score(y_test, yhat_svm), "f1": metrics.f1_score(y_test, yhat_svm)}, ignore_index=True)
 
 # Random forest
+# define the parameters
+max_depth = [int(x) for x in np.linspace(1, 100, 10)]
+max_features = list(range(1, 10))
+min_samples_leaf = list(range(1, 10))
+min_samples_split = list(range(1, 10))
+n_estimators = [int(x) for x in np.linspace(1, 50, 5)]
+parameters = dict(max_depth=max_depth, max_features=max_features, min_samples_leaf=min_samples_leaf,
+                  min_samples_split=min_samples_split, n_estimators=n_estimators)
+forest = RandomForestClassifier()
+# define the grid search
+forest_grid = GridSearchCV(forest, parameters, cv=10, scoring="f1")
+# get the best fit model
+forest_best = forest_grid.fit(x_train, y_train)
+# get the parameters of the best model
+parameters_best = forest_best.best_estimator_.get_params()
+# fit the model with the best parameters
+forest = RandomForestClassifier()
+forest.train(x_train, y_train)
+yhat_forest = forest.predict(x_test)
+results = results.append({"model": "Random forest", "accuracy": metrics.accuracy_score(y_test, yhat_forest), "f1": metrics.f1_score(y_test, yhat_forest)}, ignore_index=True)
+
+
+
 depth = 10
 accuracy = np.zeros(10-1)
 f1 = np.zeros(10-1)
