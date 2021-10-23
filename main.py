@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
 
 df = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/breast-cancer.data",
                  header=None)
@@ -87,41 +90,86 @@ y = df["class"]
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5, random_state=8)
 
 # create data frame to save results
-results = pd.DataFrame({"model": object(), "accuracy": float()}, index=[])
+results = pd.DataFrame({"model": object(), "accuracy": float(), "f1": float()}, index=[])
 
 # knn
 k = 10
 accuracy = np.zeros(k-1)
+f1 = np.zeros(k-1)
 for n in range(1, k):
     neigh = KNeighborsClassifier(n_neighbors=n)
     neigh.fit(x_train, y_train)
     yhat_neigh = neigh.predict(x_test)
-    accuracy[n-1] = metrics.accuracy_score(y_test, yhat_neigh)
+    # do not include the neighbors = 1 because it would result in over fitting
+    if n != 1:
+        accuracy[n-1] = metrics.accuracy_score(y_test, yhat_neigh)
+        f1[n-1] = metrics.f1_score(y_test, yhat_neigh)
 
-plt.plot(range(1, k), accuracy, '-o', label="knn")
-# we see that k=5 produces the highest accuracy
-neigh = KNeighborsClassifier(n_neighbors=accuracy.argmax()+1)
+plt.figure()
+plt.plot(range(1, k), accuracy, '-o', label="accuracy")
+plt.plot(range(1, k), f1, '-0', label="f1")
+plt.title("KNN")
+plt.legend()
+neigh = KNeighborsClassifier(n_neighbors=f1.argmax()+1)
 neigh.fit(x_train, y_train)
 yhat_neigh = neigh.predict(x_test)
-results = results.append({"model": "knn", "accuracy": metrics.accuracy_score(y_test, yhat_neigh)}, ignore_index=True)
+results = results.append({"model": "knn", "accuracy": metrics.accuracy_score(y_test, yhat_neigh), "f1": metrics.f1_score(y_test, yhat_neigh)}, ignore_index=True)
 
 # decision tree
 d = 10
 accuracy = np.zeros(d-1)
+f1 = np.zeros(d-1)
 for depth in range(1, d):
     tree = DecisionTreeClassifier(criterion="entropy", max_depth=depth)
     tree.fit(x_train, y_train)
     yhat_tree = tree.predict(x_test)
     accuracy[depth-1] = metrics.accuracy_score(y_test, yhat_tree)
+    f1[n - 1] = metrics.f1_score(y_test, yhat_tree)
 
-plt.plot(range(1, d), accuracy, '-o', label="tree")
-# 3 seems to be the number
-tree = DecisionTreeClassifier(criterion="entropy", max_depth=accuracy.argmax()+1)
+plt.figure()
+plt.plot(range(1, d), accuracy, '-o', label="accuracy")
+plt.plot(range(1, d), f1, '-o', label="f1")
+plt.title("Decision tree")
+plt.legend()
+# Take the model with the highest f1 score
+tree = DecisionTreeClassifier(criterion="entropy", max_depth=f1.argmax()+1)
 tree.fit(x_train, y_train)
 yhat_tree = tree.predict(x_test)
-results = results.append({"model": "tree", "accuracy": metrics.accuracy_score(y_test, yhat_tree)}, ignore_index=True)
+results = results.append({"model": "tree", "accuracy": metrics.accuracy_score(y_test, yhat_tree), "f1": metrics.f1_score(y_test, yhat_tree)}, ignore_index=True)
 
 # logistic
+LR = LogisticRegression()
+LR.fit(x_train, y_train)
+yhat_logistic = LR.predict(x_test)
+results = results.append({"model": "logistic", "accuracy": metrics.accuracy_score(y_test, yhat_logistic), "f1": metrics.f1_score(y_test, yhat_logistic)}, ignore_index=True)
 
+#SVM
+SV = svm.SVC()
+SV.fit(x_train, y_train)
+yhat_svm = SV.predict(x_test)
+metrics.accuracy_score(y_test, yhat_svm)
 
+# Random forest
+depth = 10
+accuracy = np.zeros(10-1)
+f1 = np.zeros(10-1)
+for d in range(1, depth):
+    forest = RandomForestClassifier(max_depth=d)
+    forest.fit(x_train, y_train)
+    yhat_forest = forest.predict(x_test)
+    accuracy[d-1] = metrics.accuracy_score(y_test, yhat_forest)
+    f1[d-1] = metrics.f1_score(y_test, yhat_forest)
+
+plt.figure()
+plt.plot(range(1, depth), accuracy, '-o', label="accuracy")
+plt.plot(range(1, depth), f1, '-o', label="f1")
+plt.title("Random forest")
 plt.legend()
+# Take the model with the highest f1 score
+forest = RandomForestClassifier(max_depth=f1.argmax()+1)
+forest.fit(x_train, y_train)
+yhat_forest = forest.predict(x_test)
+results = results.append({"model": "Random forest", "accuracy": metrics.accuracy_score(y_test, yhat_forest), "f1": metrics.f1_score(y_test, yhat_forest)}, ignore_index=True)
+
+
+
