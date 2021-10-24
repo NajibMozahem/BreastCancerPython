@@ -45,6 +45,66 @@ df[df.select_dtypes("object").columns] = df.select_dtypes("object").astype("cate
 # many of the categories have a natural order. We reorder so that this natural order is maintained
 # the three columns are age, tumor_size, and inv_nodes
 
+fig, ax = plt.subplots(2, 3)
+
+long = df[["class", "age"]].groupby(["age", "class"]).size().reset_index(name="count").pivot(index="age", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+long.plot(kind="bar", stacked=True, ax=ax[0,0])
+ax[0,0].set_xlabel("age")
+ax[0,0].get_legend().remove()
+
+long = df[["class", "menopause"]].groupby(["menopause", "class"]).size().reset_index(name="count").pivot(index="menopause", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+long.plot(kind="bar", stacked=True, rot=0, ax=ax[0,1])
+ax[0,1].set_xlabel("menopause")
+ax[0,1].get_legend().remove()
+
+long = df[["class", "tumor_size"]].groupby(["tumor_size", "class"]).size().reset_index(name="count").pivot(index="tumor_size", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+order = ["0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54"]
+long.loc[order].plot(kind="bar", stacked=True, ax=ax[0,2])
+ax[0,2].set_xlabel("tumor size")
+ax[0,2].get_legend().remove()
+
+long = df[["class", "breast"]].groupby(["breast", "class"]).size().reset_index(name="count").pivot(index="breast", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+long.plot(kind="bar", stacked=True, rot=0, ax=ax[1,0])
+ax[1,0].set_xlabel("breast")
+ax[1,0].get_legend().remove()
+
+long = df[["class", "breast_quad"]].groupby(["breast_quad", "class"]).size().reset_index(name="count").pivot(index="breast_quad", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+long.plot(kind="bar", stacked=True, ax=ax[1,1])
+ax[1,1].set_xlabel("breast quad")
+ax[1,1].get_legend().remove()
+
+long = df[["class", "deg_malig"]].groupby(["deg_malig", "class"]).size().reset_index(name="count").pivot(index="deg_malig", columns="class", values="count")
+long["total"] = long.sum(axis=1)
+long["no-recurrence-events"] = long["no-recurrence-events"] / long["total"]
+long["recurrence-events"] = long["recurrence-events"] / long["total"]
+long.drop("total", axis=1, inplace=True)
+long.plot(kind="bar", stacked=True, rot=0, ax=ax[1,2])
+ax[1,2].set_xlabel("deg_malig")
+ax[1,2].get_legend().remove()
+handles, labels = ax[1,2].get_legend_handles_labels()
+fig.legend(handles, labels, loc="upper center", ncol=2)
+
+
 lb_age = LabelEncoder()
 lb_age.fit(["20-29", "30-39", "40-49", "50-59", "60-69", "70-79"])
 df["age"] = lb_age.transform(df["age"])
@@ -173,13 +233,10 @@ results = results.append({"model": "SVM", "accuracy": metrics.accuracy_score(y_t
 
 # Random forest
 # define the parameters
-max_depth = [int(x) for x in np.linspace(1, 100, 10)]
-max_features = list(range(1, 10))
-min_samples_leaf = list(range(1, 10))
-min_samples_split = list(range(1, 10))
+max_depth = [int(x) for x in np.linspace(1, 50, 10)]
+max_features = [int(x) for x in linspace(1, 10, 2)]
 n_estimators = [int(x) for x in np.linspace(1, 50, 5)]
-parameters = dict(max_depth=max_depth, max_features=max_features, min_samples_leaf=min_samples_leaf,
-                  min_samples_split=min_samples_split, n_estimators=n_estimators)
+parameters = dict(max_depth=max_depth, max_features=max_features, n_estimators=n_estimators)
 forest = RandomForestClassifier()
 # define the grid search
 forest_grid = GridSearchCV(forest, parameters, cv=10, scoring="f1")
