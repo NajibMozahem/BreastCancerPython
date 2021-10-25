@@ -281,9 +281,13 @@ forest_best = forest_grid.fit(x_train, y_train)
 parameters_best = forest_best.best_estimator_.get_params()
 # fit the model with the best parameters
 forest = RandomForestClassifier()
-forest.train(x_train, y_train)
+forest.fit(x_train, y_train)
 yhat_forest = forest.predict(x_test)
 results = results.append({"model": "Random forest", "accuracy": metrics.accuracy_score(y_test, yhat_forest), "f1": metrics.f1_score(y_test, yhat_forest)}, ignore_index=True)
+results
 
+plt.plot(results["model"], results["accuracy"], '-o', label="accuracy")
+plt.plot(results["model"], results["f1"], '-o', label="f1 score")
+plt.legend()
 
 
