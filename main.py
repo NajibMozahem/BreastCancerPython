@@ -41,11 +41,6 @@ df.isnull().sum()
 # now we have nan values. drop these observations
 df.dropna(inplace=True)
 
-# many columns are objects. in fact, these objects are better thought of as categorical variables
-df[df.select_dtypes("object").columns] = df.select_dtypes("object").astype("category")
-# many of the categories have a natural order. We reorder so that this natural order is maintained
-# the three columns are age, tumor_size, and inv_nodes
-
 fig, ax = plt.subplots(2, 3)
 
 long = df[["class", "age"]].groupby(["age", "class"]).size().reset_index(name="count").pivot(index="age", columns="class", values="count")
@@ -105,6 +100,9 @@ ax[1,2].get_legend().remove()
 handles, labels = ax[1,2].get_legend_handles_labels()
 fig.legend(handles, labels, loc="upper center", ncol=2)
 
+# many columns are objects. in fact, these objects are better thought of as categorical variables
+df[df.select_dtypes("object").columns] = df.select_dtypes("object").astype("category")
+
 # perform chi2 tests
 # get categorical columns
 categorical = df[df.select_dtypes("category").columns]
@@ -139,6 +137,8 @@ elif p < 0.05:
 elif p >= 0.05:
     print(p)
 
+# many of the categories have a natural order. We reorder so that this natural order is maintained
+# the three columns are age, tumor_size, and inv_nodes
 # code the categorical variables in preperation for running the algorithms
 lb_age = LabelEncoder()
 lb_age.fit(["20-29", "30-39", "40-49", "50-59", "60-69", "70-79"])
@@ -213,7 +213,7 @@ results = results.append({"model": "knn", "accuracy": metrics.accuracy_score(y_t
 # decision tree
 # define the parameters
 max_depth = list(range(1, 10))
-min_samples_split = list(range(1, 10))
+min_samples_split = list(range(2, 10))
 min_samples_leaf = list(range(1, 5))
 parameters = dict(max_depth=max_depth, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf)
 tree = DecisionTreeClassifier()
@@ -270,7 +270,7 @@ results = results.append({"model": "SVM", "accuracy": metrics.accuracy_score(y_t
 # define the parameters
 max_depth = [int(x) for x in np.linspace(1, 50, 10)]
 max_features = [int(x) for x in np.linspace(1, 10, 2)]
-n_estimators = [int(x) for x in np.linspace(1, 50, 5)]
+n_estimators = [int(x) for x in np.linspace(1, 100, 10)]
 parameters = dict(max_depth=max_depth, max_features=max_features, n_estimators=n_estimators)
 forest = RandomForestClassifier()
 # define the grid search
