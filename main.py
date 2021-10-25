@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from scipy import stats
 
 df = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/breast-cancer.data",
                  header=None)
@@ -104,7 +105,41 @@ ax[1,2].get_legend().remove()
 handles, labels = ax[1,2].get_legend_handles_labels()
 fig.legend(handles, labels, loc="upper center", ncol=2)
 
+# perform chi2 tests
+# get categorical columns
+categorical = df[df.select_dtypes("category").columns]
+# remove the class column
+categorical = categorical.loc[:, categorical.columns != "class"]
+# now loop and perform chi2 test and save results
+chi2_results = pd.DataFrame({"variable": object(), "p-value": float(), "significance": object()}, index=[])
+for column in categorical.columns:
+    crosstab = pd.crosstab(df["class"], df[column])
+    chi2, p, dof, expected = stats.chi2_contingency(crosstab)
+    if p < 0.001:
+        stars = "***"
+    elif p < 0.01:
+        stars = "**"
+    elif p < 0.05:
+        stars = "*"
+    elif p>= 0.05:
+        stars = ""
+    chi2_results = chi2_results.append({"variable": column, "p-value": p, "significance": stars}, ignore_index=True)
+chi2_results.sort_values("p-value")
 
+# perform ttest on the single numeric variable that we have
+col1 = df[df["class"] == "no-recurrence-events"]
+col2 = df[df["class"] == "recurrence-events"]
+t, p = stats.ttest_ind(col1["deg_malig"], col2["deg_malig"])
+if p < 0.001:
+    print(p, "***")
+elif p < 0.01:
+    print(p, "**")
+elif p < 0.05:
+    print(p, "*")
+elif p >= 0.05:
+    print(p)
+
+# code the categorical variables in preperation for running the algorithms
 lb_age = LabelEncoder()
 lb_age.fit(["20-29", "30-39", "40-49", "50-59", "60-69", "70-79"])
 df["age"] = lb_age.transform(df["age"])
@@ -234,7 +269,7 @@ results = results.append({"model": "SVM", "accuracy": metrics.accuracy_score(y_t
 # Random forest
 # define the parameters
 max_depth = [int(x) for x in np.linspace(1, 50, 10)]
-max_features = [int(x) for x in linspace(1, 10, 2)]
+max_features = [int(x) for x in np.linspace(1, 10, 2)]
 n_estimators = [int(x) for x in np.linspace(1, 50, 5)]
 parameters = dict(max_depth=max_depth, max_features=max_features, n_estimators=n_estimators)
 forest = RandomForestClassifier()
@@ -247,29 +282,6 @@ parameters_best = forest_best.best_estimator_.get_params()
 # fit the model with the best parameters
 forest = RandomForestClassifier()
 forest.train(x_train, y_train)
-yhat_forest = forest.predict(x_test)
-results = results.append({"model": "Random forest", "accuracy": metrics.accuracy_score(y_test, yhat_forest), "f1": metrics.f1_score(y_test, yhat_forest)}, ignore_index=True)
-
-
-
-depth = 10
-accuracy = np.zeros(10-1)
-f1 = np.zeros(10-1)
-for d in range(1, depth):
-    forest = RandomForestClassifier(max_depth=d)
-    forest.fit(x_train, y_train)
-    yhat_forest = forest.predict(x_test)
-    accuracy[d-1] = metrics.accuracy_score(y_test, yhat_forest)
-    f1[d-1] = metrics.f1_score(y_test, yhat_forest)
-
-plt.figure()
-plt.plot(range(1, depth), accuracy, '-o', label="accuracy")
-plt.plot(range(1, depth), f1, '-o', label="f1")
-plt.title("Random forest")
-plt.legend()
-# Take the model with the highest f1 score
-forest = RandomForestClassifier(max_depth=f1.argmax()+1)
-forest.fit(x_train, y_train)
 yhat_forest = forest.predict(x_test)
 results = results.append({"model": "Random forest", "accuracy": metrics.accuracy_score(y_test, yhat_forest), "f1": metrics.f1_score(y_test, yhat_forest)}, ignore_index=True)
 
